@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins-service
+spec:
+  selector:
+    app: jenkins
+  ports:
+  - name: ui
+    protocol: TCP
+    port: 8080
+  type: NodePort
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jenkins-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  hostPath:
+    path: /data/jenkins/
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: jenkins-pv-claim
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins-deployment
+  labels:
+    app: jenkins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      containers:
+      - name: jenkins
+        image: ${dockerRegistry}/jenkins-docker
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            memory: 1Gi
+            cpu: 1
+        volumeMounts:
+          - mountPath: /var/jenkins_home
+            name: jenkins-pv-storage
+          - name: dockersock
+            mountPath: "/var/run/docker.sock"
+      imagePullSecrets:
+        - name: nxrm-docker-secret
+      volumes:
+        - name: jenkins-pv-storage
+          persistentVolumeClaim:
+            claimName: jenkins-pv-claim
+        - name: dockersock
+          hostPath:
+            path: /var/run/docker.sock

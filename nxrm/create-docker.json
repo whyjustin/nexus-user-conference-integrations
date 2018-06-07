@@ -1,0 +1,5 @@
+{
+  "name": "CreateDocker",
+  "type": "groovy",
+  "content": "repository.createDockerProxy('docker-proxy', 'https://registry-1.docker.io', 'HUB', null, 8082, null);repository.createDockerHosted('docker-hosted', 8083, null);"
+}

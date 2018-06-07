@@ -1,0 +1,52 @@
+pipeline {
+    agent {
+        docker {
+            image '192.168.64.7:31690/maven:latest'
+            registryUrl 'http://192.168.64.7:31690'
+            registryCredentialsId 'docker-credential-id'
+        }
+    }
+    stages {
+        stage('Build') {
+            steps {
+                configFileProvider(
+                        [configFile(fileId: 'nxrm-settings.xml', variable: 'MAVEN_SETTINGS')]) {
+                    sh 'mvn -s $MAVEN_SETTINGS clean package'
+                }
+            }
+        }
+        stage('Policy Evaluation') {
+            steps {
+                nexusPolicyEvaluation iqApplication: 'miramar-service', iqScanPatterns: [], iqStage: 'build'
+            }
+        }
+        stage('Release Prep') {
+            steps {
+                sh 'git config --global user.email "jyoung@sonatype.com"'
+                sh 'git config --global user.name "Tom Cruise"'
+                script {
+                    def commitId = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
+                    def commitDate = sh(returnStdout: true,
+                                        script: "git show -s --format=%cd --date=format:%Y%m%d%H-%M%S ${commitId}").trim()
+                    def pom = readMavenPom file: 'pom.xml'
+                    oldVersion = pom.version
+                    newVersion = oldVersion.replace("-SNAPSHOT", ".${commitDate}.${commitId.substring( 0, 7 )}")
+                }
+            }
+        }
+        stage('Release') {
+            steps {
+                configFileProvider(
+                        [configFile(fileId: 'nxrm-settings.xml', variable: 'MAVEN_SETTINGS')]) {
+                    sh "mvn -s \$MAVEN_SETTINGS -Darguments=-DskipTests -DreleaseVersion=${newVersion} -DdevelopmentVersion=${oldVersion} -DpushChanges=false -DlocalCheckout=true -DpreparationGoals=initialize release:prepare release:perform -B"
+                    sh "git tag --delete miramar-service-${newVersion}"
+                }
+            }
+        }
+        stage('Start Deployment') {
+            steps {
+                build job: 'miramar-service-deploy', parameters: [[$class: 'StringParameterValue', name: 'newVersion', value: "${newVersion}"]]
+            }
+        }
+    }
+}

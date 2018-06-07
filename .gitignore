@@ -1,0 +1,4 @@
+*.lic
+cookies
+*.tmp
+.DS_Store

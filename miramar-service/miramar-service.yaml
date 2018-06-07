@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: miramar-service
+spec:
+  selector:
+    app: miramar
+  ports:
+  - name: ui
+    protocol: TCP
+    port: 8080
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: miramar-deployment
+  labels:
+    app: miramar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: miramar
+  template:
+    metadata:
+      labels:
+        app: miramar
+    spec:
+      containers:
+      - name: miramar
+        image: 192.168.64.7:31780/miramar-service
+        ports:
+        - containerPort: 8080
+      imagePullSecrets:
+        - name: nxrm-docker-secret

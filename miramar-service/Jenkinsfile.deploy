@@ -1,0 +1,37 @@
+pipeline {
+    agent {
+        docker {
+            image '192.168.64.7:31690/docker:latest'
+            registryUrl 'http://192.168.64.7:31690'
+            registryCredentialsId 'docker-credential-id'
+        }
+    }
+    parameters {
+        string(name: 'newVersion', defaultValue: '', description: 'Version of Miramar Service to deploy')
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh "docker build --tag miramar-service-build:${params.newVersion} --build-arg MIRAMAR_VERSION=${params.newVersion} ."
+                sh "docker save -o miramar-service-build.tar miramar-service-build:${params.newVersion}"
+
+            }
+        }
+        stage('Policy Evaluation') {
+            steps {
+                nexusPolicyEvaluation iqApplication: 'miramar-service', iqScanPatterns: [[scanPattern: 'miramar-service-build.tar']], iqStage: 'release'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                script {
+                    docker.withRegistry('http://192.168.64.7:31780', 'docker-credential-id') {
+                        def miramarImage = docker.build("miramar-service:${params.newVersion}", "--build-arg MIRAMAR_VERSION=${params.newVersion} .")
+                        miramarImage.push()
+                        miramarImage.push('latest')
+                    }
+                }
+            }
+        }
+    }
+}

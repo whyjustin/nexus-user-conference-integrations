@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nxrm-service
+spec:
+  selector:
+    app: nxrm
+  ports:
+  - name: ui
+    protocol: TCP
+    port: 8081
+  - name: docker-proxy
+    protocol: TCP
+    port: 8082
+  - name: docker-hosted
+    protocol: TCP
+    port: 8083
+  type: NodePort
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nxrm-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 3Gi
+  hostPath:
+    path: /data/nxrm/
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: nxrm-pv-claim
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nxrm-deployment
+  labels:
+    app: nxrm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nxrm
+  template:
+    metadata:
+      labels:
+        app: nxrm
+    spec:
+      containers:
+      - name: nxrm
+        image: sonatype/nexus3
+        ports:
+        - containerPort: 8081
+        - containerPort: 8082
+        - containerPort: 8083
+        resources:
+          limits:
+            memory: 1Gi
+        volumeMounts:
+          - mountPath: /nexus-data
+            name: nxrm-pv-storage
+      volumes:
+        - name: nxrm-pv-storage
+          persistentVolumeClaim:
+            claimName: nxrm-pv-claim
