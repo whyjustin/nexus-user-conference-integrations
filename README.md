@@ -23,7 +23,7 @@ kubectl get pods
 minikube service nxrm-service --url | sed -n 3p | sed 's/^http:\/\///g'
 # Adjust local Docker instance to allow the above insecure-registry (Nexus Repository Hosted Docker)
 
-./deploy-jenkins
+./deploy-jenkins.sh
 
 kubectl get pods
 # Wait until pods return STATUS Running
