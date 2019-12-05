@@ -70,6 +70,9 @@ spec:
         volumeMounts:
           - mountPath: /nexus-data
             name: nxrm-pv-storage
+        env:
+          - name: NEXUS_SECURITY_RANDOMPASSWORD
+            value: "false"
       volumes:
         - name: nxrm-pv-storage
           persistentVolumeClaim:
